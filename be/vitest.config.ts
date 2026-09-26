@@ -22,6 +22,12 @@ export default defineConfig({
     // ¿Para qué? Los tests del backend usan APIs de Node — net, crypto, etc.
     environment: 'node',
 
+    // ¿Qué? Los archivos de tests corren uno a la vez, no en paralelo.
+    // ¿Impacto? Todos comparten la misma BD y setup.ts la vacía antes de cada test: en
+    //   paralelo, un archivo borraba los usuarios que otro estaba usando y fallaban tests
+    //   al azar (2 de cada 8 corridas).
+    fileParallelism: false,
+
     // ¿Qué? Se ejecuta una vez antes de toda la suite, en el proceso principal.
     // ¿Para qué? Detener los tests si DATABASE_URL no es una BD de pruebas y aplicar migraciones.
     globalSetup: ['./src/tests/global-setup.ts'],

@@ -39,6 +39,10 @@ out/
 # Testing — cobertura y cachés
 # ------------------------------------------------------------
 coverage/
+
+# Playwright (e2e/): resultados y reporte HTML generados en cada corrida
+test-results/
+playwright-report/
 .nyc_output/
 *.lcov
 
