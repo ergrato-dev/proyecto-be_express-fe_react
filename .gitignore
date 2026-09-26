@@ -9,8 +9,10 @@
 .env
 .env.local
 .env.*.local
+.env.test
 # Excepción: los .env.example SÍ se versionan (son plantillas)
 !.env.example
+!.env.test.example
 
 # ------------------------------------------------------------
 # Dependencias — Node.js

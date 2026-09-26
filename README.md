@@ -229,8 +229,16 @@ cd fe && pnpm dev
 
 ### Backend
 
+Los tests usan una **BD exclusiva** (`db-test`, puerto 5433), nunca la de desarrollo: borran
+todas las tablas antes de cada caso. Si `DATABASE_URL` no apunta a una BD `*_test`, se detienen.
+El envío de emails está simulado: no hace falta Mailpit para correrlos.
+
 ```bash
+# BD de pruebas desechable (una vez por sesión de trabajo)
+docker compose up -d --wait db-test
+
 cd be
+cp .env.test.example .env.test   # solo la primera vez
 
 # Ejecutar todos los tests
 pnpm test
@@ -339,7 +347,7 @@ proyecto-beex-fe/
 │       └── tests/
 │           ├── setup.ts          # Setup global de Vitest
 │           ├── helpers.ts        # Helpers compartidos
-│           └── auth.test.ts      # 20 tests de integración
+│           └── auth.test.ts      # 37 tests de API con supertest
 │
 └── fe/                           # Frontend — React + Vite + TypeScript
     ├── .env.example              # Plantilla de variables de entorno
