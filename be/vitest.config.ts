@@ -36,15 +36,30 @@ export default defineConfig({
     // ¿Qué? Reporte de cobertura usando el provider v8 de Node.js.
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'lcov'],
-      // ¿Qué? Solo medir cobertura de código fuente, no de tests ni tipos.
+      // ¿Qué? "html" genera coverage/index.html, que el CI sube como artefacto.
+      reporter: ['text', 'lcov', 'html'],
+      // ¿Qué? Se mide la lógica de negocio: rutas, controladores, servicios y middlewares.
+      // ¿Impacto? Quedan fuera los tests, los tipos, el arranque (index.ts), la lectura de
+      //   variables de entorno (config.ts) y los adaptadores de BD (db/index.ts) y de email
+      //   (utils/email.ts): la BD se prueba real y el email se reemplaza con vi.mock.
       include: ['src/**/*.ts'],
-      exclude: ['src/tests/**', 'src/types/**', 'src/**/*.d.ts'],
-      // ¿Qué? Umbral mínimo de cobertura exigido por el proyecto (80%).
+      exclude: [
+        'src/tests/**',
+        'src/types/**',
+        'src/**/*.d.ts',
+        'src/index.ts',
+        'src/config.ts',
+        'src/db/index.ts',
+        'src/utils/email.ts',
+      ],
+      // ¿Qué? Umbral mínimo de cobertura: 80% en todo salvo ramas.
+      // ¿Impacto? Las ramas están en 72,5%: el umbral queda en la cobertura real redondeada
+      //   hacia abajo (regla de trinquete) y solo sube, PR a PR, hasta el 80%.
       thresholds: {
+        statements: 80,
         lines: 80,
         functions: 80,
-        branches: 70,
+        branches: 72,
       },
     },
   },
