@@ -9,8 +9,10 @@
 .env
 .env.local
 .env.*.local
+.env.test
 # Excepción: los .env.example SÍ se versionan (son plantillas)
 !.env.example
+!.env.test.example
 
 # ------------------------------------------------------------
 # Dependencias — Node.js
@@ -37,6 +39,10 @@ out/
 # Testing — cobertura y cachés
 # ------------------------------------------------------------
 coverage/
+
+# Playwright (e2e/): resultados y reporte HTML generados en cada corrida
+test-results/
+playwright-report/
 .nyc_output/
 *.lcov
 

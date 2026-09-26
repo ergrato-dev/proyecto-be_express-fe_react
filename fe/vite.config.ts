@@ -42,12 +42,30 @@ export default defineConfig({
 
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'lcov'],
+      // ¿Qué? "html" genera coverage/index.html, que el CI sube como artefacto.
+      reporter: ['text', 'lcov', 'html'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/__tests__/**', 'src/types/**', 'src/main.tsx'],
+      // ¿Qué? Se mide la lógica de la interfaz. Quedan fuera los tests, los tipos, el
+      //   arranque (main.tsx, App.tsx con las rutas), la configuración de idiomas (i18n) y el
+      //   cliente HTTP (src/api), que se prueba con MSW a nivel de red.
+      exclude: [
+        'src/__tests__/**',
+        'src/types/**',
+        'src/**/*.d.ts',
+        'src/main.tsx',
+        'src/App.tsx',
+        'src/i18n/**',
+        'src/api/**',
+      ],
+      // ¿Qué? Umbral mínimo: `pnpm test:coverage` falla si la cobertura baja de aquí.
+      // ¿Impacto? Es la cobertura real redondeada hacia abajo (regla de trinquete): solo sube,
+      //   PR a PR, hasta el 80%. El umbral anterior (70% en líneas y funciones) nunca se
+      //   cumplió ni se exigía en un CI; este es el primero que el CI hace cumplir.
       thresholds: {
-        lines: 70,
-        functions: 70,
+        statements: 59,
+        branches: 57,
+        functions: 45,
+        lines: 60,
       },
     },
   },

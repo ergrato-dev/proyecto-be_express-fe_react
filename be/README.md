@@ -87,7 +87,8 @@ be/
     └── tests/
         ├── setup.ts           # Setup global de Vitest (test DB, hooks)
         ├── helpers.ts         # Funciones reutilizables para tests
-        └── auth.test.ts       # 20 tests de integración con supertest
+        ├── auth.test.ts       # 37 tests de API con supertest
+        └── security.test.ts   # 5 tests unitarios de hashing y JWT
 ```
 
 ---
@@ -636,21 +637,21 @@ de Express vive en `app.ts`. Esto sigue el principio de responsabilidad única (
 
 **Archivos:** `src/tests/`
 
-El backend tiene **20 tests de integración** que cubren todos los flujos de
-autenticación. Se usan `vitest` como runner y `supertest` para hacer requests HTTP
-reales contra la app de Express.
+El backend tiene **37 tests de API** que cubren todos los flujos de autenticación y
+**5 tests unitarios** de las funciones de `utils/security.ts`.
+Se usan `vitest` como runner y `supertest` para hacer requests HTTP reales contra la
+app de Express, con PostgreSQL real.
 
-### Setup global (`setup.ts`)
+### BD de pruebas
 
-```typescript
-// Espera a que la BD esté disponible antes de correr los tests
-beforeAll(async () => {
-  const client = new Client({ connectionString: config.DATABASE_URL });
-  await client.connect();
-  await client.query('TRUNCATE TABLE users, password_reset_tokens CASCADE');
-  await client.end();
-});
-```
+Los tests corren sobre el servicio `db-test` del `docker-compose.yml` (puerto 5433,
+BD `nn_auth_test`), nunca sobre la BD de desarrollo:
+
+- `vitest.config.ts` carga `be/.env.test` (copia de `.env.test.example`) antes que el `.env`.
+- `global-setup.ts` se detiene si el nombre de la BD no termina en `_test` y aplica las
+  migraciones con `prisma migrate deploy`.
+- `setup.ts` vacía las tablas antes de cada test, reemplaza el módulo de email con
+  `vi.mock` (ningún test envía correos) y cierra Prisma al terminar.
 
 ### Ejemplo de test
 

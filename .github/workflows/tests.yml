@@ -1,0 +1,216 @@
+# ¿Qué? CI de tests: backend contra PostgreSQL real, frontend con umbral de cobertura,
+#   y E2E con Playwright contra la app completa.
+# ¿Para qué? Que cada push y cada PR corran la suite completa y se pongan en rojo si un
+#   test falla o si la cobertura baja de los thresholds de vitest.config.ts y vite.config.ts.
+# ¿Impacto? Los reportes de cobertura quedan como artefactos descargables en la pestaña
+#   Actions, para revisar líneas y ramas sin cubrir sin correr nada en local.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Principio de mínimo privilegio: solo lectura del código
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────
+  # 🟢 Backend — Vitest + Supertest contra PostgreSQL
+  # ────────────────────────────
+  backend:
+    name: Backend (vitest + cobertura)
+    runs-on: ubuntu-24.04
+
+    # ¿Qué? PostgreSQL como servicio del job: el db-test del docker-compose.yml, en el CI.
+    # ¿Impacto? GitHub espera al healthcheck antes del primer paso; la BD muere con el job.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: nn_user
+          POSTGRES_PASSWORD: nn_password
+          POSTGRES_DB: nn_auth_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U nn_user -d nn_auth_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+
+    # Valores desechables que existen solo durante el job — nunca secretos reales.
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://nn_user:nn_password@localhost:5433/nn_auth_test
+      JWT_ACCESS_SECRET: ci-access-secret-not-for-production-32chars
+      JWT_REFRESH_SECRET: ci-refresh-secret-not-for-production-32chars
+
+    defaults:
+      run:
+        working-directory: be
+
+    steps:
+      # actions/checkout@v7.0.1
+      # SHA pinado para prevenir supply chain attacks (tag mutable → SHA inmutable)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      # pnpm/action-setup@v6.0.10 — toma la versión de "packageManager" en package.json
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          package_json_file: be/package.json
+
+      # actions/setup-node@v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: be/pnpm-lock.yaml
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      # ¿Qué? Genera el cliente de Prisma a partir de prisma/schema.prisma.
+      # ¿Impacto? Sin él, `import { PrismaClient }` falla. Las migraciones las aplica
+      #   src/tests/global-setup.ts al empezar la suite.
+      - name: Generar cliente Prisma
+        run: pnpm db:generate
+
+      - name: Tests + cobertura (vitest)
+        run: pnpm test:coverage
+
+      # actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: coverage-backend
+          path: be/coverage/
+          retention-days: 7
+
+  # ────────────────────────────
+  # ⚛️ Frontend — Vitest + Testing Library
+  # ────────────────────────────
+  frontend:
+    name: Frontend (vitest + cobertura)
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: fe
+
+    steps:
+      # actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      # pnpm/action-setup@v6.0.10
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          package_json_file: fe/package.json
+
+      # actions/setup-node@v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: fe/pnpm-lock.yaml
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Tests + cobertura (vitest)
+        run: pnpm test:coverage
+
+      # actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: coverage-frontend
+          path: fe/coverage/
+          retention-days: 7
+
+  # ────────────────────────────
+  # 🎭 E2E — Playwright contra backend + frontend + PostgreSQL + Mailpit
+  # ────────────────────────────
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-24.04
+
+    # ¿Qué? La BD de pruebas y Mailpit como servicios del job.
+    # ¿Para qué? El test de registro lee el enlace de verificación desde la API de Mailpit.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: nn_user
+          POSTGRES_PASSWORD: nn_password
+          POSTGRES_DB: nn_auth_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U nn_user -d nn_auth_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+      mailpit:
+        image: axllent/mailpit:v1.31.1
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    steps:
+      # actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      # pnpm/action-setup@v6.0.10
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          package_json_file: e2e/package.json
+
+      # actions/setup-node@v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: |
+            be/pnpm-lock.yaml
+            fe/pnpm-lock.yaml
+            e2e/pnpm-lock.yaml
+
+      # ¿Qué? Playwright arranca el backend (con migraciones) y el frontend: necesitan
+      #   sus dependencias y el cliente de Prisma generado.
+      - name: Instalar dependencias del backend
+        working-directory: be
+        # ¿Qué? prisma.config.ts exige DATABASE_URL incluso para generar el cliente.
+        env:
+          DATABASE_URL: postgresql://nn_user:nn_password@localhost:5433/nn_auth_test
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+
+      - name: Instalar dependencias del frontend
+        working-directory: fe
+        run: pnpm install --frozen-lockfile
+
+      - name: Instalar Playwright y Chromium
+        working-directory: e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: Tests E2E (Playwright)
+        working-directory: e2e
+        run: pnpm test
+
+      # ¿Qué? Si algo falla, el reporte HTML (con trazas) queda descargable.
+      # actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7

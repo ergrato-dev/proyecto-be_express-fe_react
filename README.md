@@ -227,10 +227,21 @@ cd fe && pnpm dev
 
 ## 🧪 Testing
 
+> 🔎 Este proyecto tiene defectos reales documentados para practicar testing en clase:
+> [`docs/testing/hallazgos.md`](docs/testing/hallazgos.md).
+
 ### Backend
 
+Los tests usan una **BD exclusiva** (`db-test`, puerto 5433), nunca la de desarrollo: borran
+todas las tablas antes de cada caso. Si `DATABASE_URL` no apunta a una BD `*_test`, se detienen.
+El envío de emails está simulado: no hace falta Mailpit para correrlos.
+
 ```bash
+# BD de pruebas desechable (una vez por sesión de trabajo)
+docker compose up -d --wait db-test
+
 cd be
+cp .env.test.example .env.test   # solo la primera vez
 
 # Ejecutar todos los tests
 pnpm test
@@ -256,6 +267,26 @@ pnpm test:watch
 # Ejecutar con cobertura
 pnpm test:coverage
 ```
+
+### E2E (Playwright)
+
+Prueban los flujos críticos en un navegador real: registro, verificación del correo (leído
+desde Mailpit), inicio de sesión y dashboard. Playwright levanta el backend (con migraciones)
+y el frontend por su cuenta; antes hay que levantar la BD de pruebas y Mailpit.
+
+```bash
+docker compose up -d --wait db-test mailpit
+
+cd e2e
+pnpm install
+pnpm exec playwright install chromium   # solo la primera vez
+
+pnpm test          # todos los E2E
+pnpm test:ui       # modo interactivo, paso a paso
+pnpm report        # reporte HTML de la última corrida
+```
+
+> Si los puertos 3000 o 5173 están ocupados: `API_PORT=3100 FRONT_PORT=5180 pnpm test`.
 
 ### Linting
 
@@ -339,7 +370,8 @@ proyecto-beex-fe/
 │       └── tests/
 │           ├── setup.ts          # Setup global de Vitest
 │           ├── helpers.ts        # Helpers compartidos
-│           └── auth.test.ts      # 20 tests de integración
+│           ├── auth.test.ts      # 37 tests de API con supertest
+│           └── security.test.ts  # 5 tests unitarios de hashing y JWT
 │
 └── fe/                           # Frontend — React + Vite + TypeScript
     ├── .env.example              # Plantilla de variables de entorno
@@ -365,7 +397,7 @@ proyecto-beex-fe/
         │   ├── ui/               # Button, InputField, Alert, ThemeToggle, ProtectedRoute
         │   └── layout/           # Layout, Navbar, Footer
         ├── pages/                # 11 páginas (Landing, Login, Register, Dashboard…)
-        └── __tests__/            # 58 tests (componentes, hooks, contexto, páginas)
+        └── __tests__/            # 67 tests (componentes, hooks, contexto, páginas)
 ```
 
 ---
