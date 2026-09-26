@@ -185,6 +185,9 @@ jobs:
       #   sus dependencias y el cliente de Prisma generado.
       - name: Instalar dependencias del backend
         working-directory: be
+        # ¿Qué? prisma.config.ts exige DATABASE_URL incluso para generar el cliente.
+        env:
+          DATABASE_URL: postgresql://nn_user:nn_password@localhost:5433/nn_auth_test
         run: |
           pnpm install --frozen-lockfile
           pnpm db:generate
