@@ -87,7 +87,8 @@ be/
     └── tests/
         ├── setup.ts           # Setup global de Vitest (test DB, hooks)
         ├── helpers.ts         # Funciones reutilizables para tests
-        └── auth.test.ts       # 37 tests de API con supertest
+        ├── auth.test.ts       # 37 tests de API con supertest
+        └── security.test.ts   # 5 tests unitarios de hashing y JWT
 ```
 
 ---
@@ -636,7 +637,8 @@ de Express vive en `app.ts`. Esto sigue el principio de responsabilidad única (
 
 **Archivos:** `src/tests/`
 
-El backend tiene **37 tests de API** que cubren todos los flujos de autenticación.
+El backend tiene **37 tests de API** que cubren todos los flujos de autenticación y
+**5 tests unitarios** de las funciones de `utils/security.ts`.
 Se usan `vitest` como runner y `supertest` para hacer requests HTTP reales contra la
 app de Express, con PostgreSQL real.
 

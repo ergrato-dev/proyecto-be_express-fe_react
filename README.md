@@ -227,6 +227,9 @@ cd fe && pnpm dev
 
 ## 🧪 Testing
 
+> 🔎 Este proyecto tiene defectos reales documentados para practicar testing en clase:
+> [`docs/testing/hallazgos.md`](docs/testing/hallazgos.md).
+
 ### Backend
 
 Los tests usan una **BD exclusiva** (`db-test`, puerto 5433), nunca la de desarrollo: borran
@@ -367,7 +370,8 @@ proyecto-beex-fe/
 │       └── tests/
 │           ├── setup.ts          # Setup global de Vitest
 │           ├── helpers.ts        # Helpers compartidos
-│           └── auth.test.ts      # 37 tests de API con supertest
+│           ├── auth.test.ts      # 37 tests de API con supertest
+│           └── security.test.ts  # 5 tests unitarios de hashing y JWT
 │
 └── fe/                           # Frontend — React + Vite + TypeScript
     ├── .env.example              # Plantilla de variables de entorno
@@ -393,7 +397,7 @@ proyecto-beex-fe/
         │   ├── ui/               # Button, InputField, Alert, ThemeToggle, ProtectedRoute
         │   └── layout/           # Layout, Navbar, Footer
         ├── pages/                # 11 páginas (Landing, Login, Register, Dashboard…)
-        └── __tests__/            # 58 tests (componentes, hooks, contexto, páginas)
+        └── __tests__/            # 67 tests (componentes, hooks, contexto, páginas)
 ```
 
 ---
